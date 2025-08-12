@@ -1,0 +1,73 @@
+﻿<Window x:Class="win_chat.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:win_chat"
+        mc:Ignorable="d"
+        Title="WpfChat" Height="450" Width="850">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Раздел подключения -->
+        <Border BorderBrush="Gray" BorderThickness="1" Padding="10" Margin="0 0 0 5">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+                <CheckBox Content="Запустить как сервер"
+                      IsChecked="{Binding IsServerMode}"
+                      Margin="0,0,10,0"/>
+
+                <TextBlock Text="IP-адрес:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <TextBox Width="150"
+                     Text="{Binding ServerIp, UpdateSourceTrigger=PropertyChanged}"
+                     IsEnabled="{Binding IsIpEnabled}"
+                     Margin="0,0,10,0"/>
+
+                <TextBlock Text="Имя пользователя:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <TextBox Width="150"
+                     Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"
+                     Margin="0,0,10,0"/>
+
+                <Button Content="{Binding ConnectButtonText}"
+                    Command="{Binding ConnectCommand}"
+                    Width="120"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Раздел чата -->
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- История сообщений -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0 0 0 5">
+                <TextBlock Text="{Binding ChatLog}" TextWrapping="Wrap"/>
+            </ScrollViewer>
+
+            <!-- Поле ввода, кнопка отправки и статус -->
+            <StackPanel Orientation="Horizontal" Grid.Row="1" VerticalAlignment="Center">
+
+                <TextBox Text="{Binding OutgoingMessage, UpdateSourceTrigger=PropertyChanged}"
+                     Width="450" Margin="0,0,5,0"/>
+
+                <Button Content="Отправить"
+                    Command="{Binding SendMessageCommand}"
+                    IsEnabled="{Binding IsConnected}"
+                    Width="100"
+                    Margin="0,0,10,0"/>
+
+                <TextBlock Text="{Binding ConnectionStatus}"
+                       VerticalAlignment="Center"
+                       FontWeight="Bold"
+                       Foreground="DarkGreen"/>
+            </StackPanel>
+        </Grid>
+
+
+    </Grid>
+</Window>
