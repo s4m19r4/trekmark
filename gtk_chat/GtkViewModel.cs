@@ -92,6 +92,7 @@ namespace gtk_chat
             buttonConnect.Clicked += OnButtonConnectClicked;
             buttonSend.Clicked += OnButtonSendClicked;
 
+            //обновляем интерфейс
             Update_ButtonConnect_Sensitive();
             Update_ButtonConnect_Text();
             Update_ButtonSend_Sensitive();
@@ -102,24 +103,171 @@ namespace gtk_chat
 
         }
 
+        // ***** Свойства *****
+
+        public string ServerIp
+        {
+            get => _serverIp;
+            set
+            {
+                if (_serverIp != value)
+                {
+                    _serverIp = value;
+                    Update_ButtonConnect_Sensitive();
+
+                }
+            }
+        }
+
+        public bool IsServerMode
+        {
+            get => _isServerMode;
+            set
+            {
+                if (_isServerMode != value)
+                {
+                    _isServerMode = value;
+                    Update_LabelStatus_Text();
+                    Update_EnterIp_Sensitive();
+                    Update_ButtonConnect_Text();
+                }
+            }
+        }
+
+        public string UserName
+        {
+            get => _userName;
+            set
+            {
+                if (_userName != value)
+                {
+                    _userName = value;
+                }
+            }
+        }
+
+        public bool IsConnected
+        {
+            get => _isConnected;
+            private set
+            {
+                if (_isConnected != value)
+                {
+                    _isConnected = value;
+
+                    if (IsServerMode)
+                    {
+                        if (_isConnected) AddChatMessage(new ChatMessage("Клиент подключился"));
+                        else AddChatMessage(new ChatMessage("Клиент отключился"));
+                    }
+                    else
+                    {
+                        if (_isConnected)
+                        {
+                            AddChatMessage(new ChatMessage("Подключение к серверу установлено"));
+                            IsRunning = true;
+                        }
+                        else
+                        {
+                            AddChatMessage(new ChatMessage("Подключение к серверу закрыто"));
+                            IsRunning = false;
+                        }
+                    }
+
+                    Update_ButtonSend_Sensitive();
+                    Update_ButtonConnect_Text();
+
+                }
+            }
+        }
+
+        public bool IsRunning
+        {
+            get => _isRunning;
+            private set
+            {
+                if (_isRunning != value)
+                {
+                    _isRunning = value;
+
+                    Update_ButtonConnect_Text();
+                    Update_LabelStatus_Text();
+                    Update_ButtonSend_Sensitive();
+                    Update_ButtonIsServer_Sensitive();
+
+                    var conn = _isServerMode ? "Сервер" : "Клиент";
+                    var status = _isRunning ? " запущен." : " остановлен.";
+                    AddChatMessage(new ChatMessage(conn + status));
+                }
+            }
+        }
+
+        public string ConnectButtonText
+        {
+            get => _connectButtonText;
+            private set
+            {
+                if (_connectButtonText != value)
+                {
+                    _connectButtonText = value;                    
+                }
+            }
+        }
+
+        public string ChatLog
+        {
+            get => _chatLog;
+            private set
+            {
+                if (_chatLog != value)
+                {
+                    _chatLog = value;                   
+                }
+            }
+        }
+
+
+        public string OutgoingMessage
+        {
+            get => _outgoingMessage;
+            set
+            {
+                if (_outgoingMessage != value)
+                {
+                    _outgoingMessage = value;
+                    Update_ButtonSend_Sensitive();
+                }
+            }
+        }
+
+        public string ConnectionStatus
+        {
+            get => _connectionStatus;
+            private set
+            {
+                if (_connectionStatus != value)
+                {
+                    _connectionStatus = value;
+
+                }
+            }
+        }
+
+        // ***** Обработка событий интерфейса *****
 
         private void OnEntryUsernameChanged(object? sender, EventArgs e)
         {
-            Update_ButtonConnect_Sensitive();
-
             if (entryUsername.Text is not null)
             {
                 UserName = entryUsername.Text;
             }
-
+            Update_ButtonConnect_Sensitive();
         }
 
         private void OnEntryInputChanged(object? sender, EventArgs e)
-        {
-                       
+        {                       
             OutgoingMessage = entryInputMessage.Text;
             Update_ButtonSend_Sensitive();
-
         }
 
         private void OnEntryIpChanged(object? sender, EventArgs e)
@@ -144,6 +292,48 @@ namespace gtk_chat
             SendMessage();
         }
 
+        // ***** Обработка событий подключения *****
+        
+        private void RunningHandler()
+        {
+            IsRunning = true;
+        }
+
+        private void StoppedHandler()
+        {
+            IsRunning = false;
+        }
+
+        private void ConnectedHandler()
+        {
+            IsConnected = true;
+        }
+
+        private void DisconnectedHandler()
+        {
+            IsConnected = false;
+        }
+
+        private void MessageReceivedHandler(ChatMessage msg)
+        {
+            AddChatMessage(msg);
+
+            if (_isServerMode)
+            {
+                // Эхо-ответ
+                counter++;
+                _ = currentConnection.SendMessageAsync(
+                    new ChatMessage(MessageType.Message, _userName, $"***** Сервер получил {counter} сообщений."));
+            }
+        }
+
+        private void ErrorOccurredHandler(Exception ex)
+        {
+            AddChatMessage(new ChatMessage($"Ошибка: {ex.Message}"));
+        }
+
+        // ***** Методы иодификации интерфейса *****
+
         private void AppendMessage(string message)
         {
             Application.Invoke(delegate
@@ -162,7 +352,6 @@ namespace gtk_chat
             });
 
         }
-
 
 
         private void Set_LebelStatus_Style()
@@ -253,177 +442,35 @@ namespace gtk_chat
             }
         }
 
-        private bool IsValidIpAddress(string input)
+
+        private void AddChatMessage(ChatMessage message)
         {
-            bool parseResult = IPAddress.TryParse(input, out IPAddress? address);
+            bool ShowExceptions = true;
 
-            if (!parseResult)
+            if (message.Type == MessageType.Error)
             {
-                return false;
-            }
-
-            // Проверяем, что адрес IPv4
-            bool isIPv4 = address?.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork;
-
-            return isIPv4;
-        }
-
-        //***************************************
-        //свойства
-        public string ServerIp
-        {
-            get => _serverIp;
-            set
-            {
-                if (_serverIp != value)
+                if (ShowExceptions)
                 {
-                    _serverIp = value;
-                    Update_ButtonConnect_Sensitive();
+                    ChatLog += message + Environment.NewLine;
+                    AppendMessage(message.ToString());
+
 
                 }
-            }
-        }
-
-        public bool IsServerMode
-        {
-            get => _isServerMode;
-            set
-            {
-                if (_isServerMode != value)
+                else
                 {
-                    _isServerMode = value;
-                    Update_LabelStatus_Text();
-                    Update_EnterIp_Sensitive();
-                    Update_ButtonConnect_Text();
+                    //игнор
                 }
             }
-        }
-
-
-
-        public string UserName
-        {
-            get => _userName;
-            set
+            else
             {
-                if (_userName != value)
-                {
-                    _userName = value;
-                }
+                ChatLog += message + Environment.NewLine;
+                AppendMessage(message.ToString());
             }
-        }
 
-        public bool IsConnected
-        {
-            get => _isConnected;
-            private set
-            {
-                if (_isConnected != value)
-                {
-                    _isConnected = value;
-
-                    if (IsServerMode)
-                    {
-                        if (_isConnected) AddChatMessage(new ChatMessage("Клиент подключился"));
-                        else AddChatMessage(new ChatMessage("Клиент отключился"));
-                    }
-                    else
-                    {
-                        if (_isConnected)
-                        {
-                            AddChatMessage(new ChatMessage("Подключение к серверу установлено"));
-                            IsRunning = true;
-                        }
-                        else
-                        {
-                            AddChatMessage(new ChatMessage("Подключение к серверу закрыто"));
-                            IsRunning = false;
-                        }
-                    }
-
-                    Update_ButtonSend_Sensitive();
-                    Update_ButtonConnect_Text();
-
-                }
-            }
-        }
-
-        public bool IsRunning
-        {
-            get => _isRunning;
-            private set
-            {
-                if (_isRunning != value)
-                {
-                    _isRunning = value;
-
-                    Update_ButtonConnect_Text();
-                    Update_LabelStatus_Text();
-                    Update_ButtonSend_Sensitive();
-                    Update_ButtonIsServer_Sensitive();
-
-                    var conn = _isServerMode ? "Сервер" : "Клиент";
-                    var status = _isRunning ? " запущен." : " остановлен.";
-                    AddChatMessage(new ChatMessage(conn + status));
-                }
-            }
-        }
-
-        public string ConnectButtonText
-        {
-            get => _connectButtonText;
-            private set
-            {
-                if (_connectButtonText != value)
-                {
-                    _connectButtonText = value;
-                    //OnPropertyChanged();
-                }
-            }
-        }
-
-        public string ChatLog
-        {
-            get => _chatLog;
-            private set
-            {
-                if (_chatLog != value)
-                {
-                    _chatLog = value;
-                    //AppendMessage(_chatLog);
-                }
-            }
         }
 
 
-        public string OutgoingMessage
-        {
-            get => _outgoingMessage;
-            set
-            {
-                if (_outgoingMessage != value )
-                {
-                    _outgoingMessage = value;
-                    Update_ButtonSend_Sensitive();
-                }
-            }
-        }
-
-        public string ConnectionStatus
-        {
-            get => _connectionStatus;
-            private set
-            {
-                if (_connectionStatus != value)
-                {
-                    _connectionStatus = value;
-
-                }
-            }
-        }
-
-        
-
+        // ***** Методы работы с подключением *****
 
         private async void ConnectOrDisconnect()
         {
@@ -468,7 +515,7 @@ namespace gtk_chat
 
                     await currentConnection.DisconnectAsync();
 
-                    
+
                 }
                 catch (Exception ex)
                 {
@@ -480,16 +527,15 @@ namespace gtk_chat
             //  ((RelayCommand)SendMessageCommand).RaiseCanExecuteChanged();
         }
 
-
         private async void SendMessage()
         {
             if (string.IsNullOrWhiteSpace(entryInputMessage.Text) || string.IsNullOrEmpty(entryInputMessage.Text)) return;
 
             OutgoingMessage = entryInputMessage.Text;
             var message = new ChatMessage(MessageType.Message, _userName, OutgoingMessage);
-            
 
-            if (IsConnected && IsRunning )
+
+            if (IsConnected && IsRunning)
             {
                 await currentConnection.SendMessageAsync(message);
             }
@@ -497,71 +543,36 @@ namespace gtk_chat
             AddChatMessage(message);
         }
 
-        private void AddChatMessage(ChatMessage message)
+        // ***** Вспомогательные методы *****
+        private bool IsValidIpAddress(string input)
         {
-            bool ShowExceptions = true;
+            bool parseResult = IPAddress.TryParse(input, out IPAddress? address);
 
-            if (message.Type == MessageType.Error)
+            if (!parseResult)
             {
-                if (ShowExceptions)
-                {
-                    ChatLog += message + Environment.NewLine;
-                    AppendMessage(message.ToString());
-
-
-                }
-                else
-                {
-                    //игнор
-                }
-            }
-            else
-            {
-                ChatLog += message + Environment.NewLine;
-                AppendMessage(message.ToString());
+                return false;
             }
 
+            // Проверяем, что адрес IPv4
+            bool isIPv4 = address?.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork;
+
+            return isIPv4;
         }
 
+       
 
-        // Объявление обработчиков
-        private void RunningHandler()
-        {
-            IsRunning = true;
-        }
+        
 
-        private void StoppedHandler()
-        {
-            IsRunning = false;
-        }
 
-        private void ConnectedHandler()
-        {
-            IsConnected = true;
-        }
+        
 
-        private void DisconnectedHandler()
-        {
-            IsConnected = false;
-        }
 
-        private void MessageReceivedHandler(ChatMessage msg)
-        {
-            AddChatMessage(msg);
+       
 
-            if (_isServerMode)
-            {
-                // Эхо-ответ
-                counter++;
-                _ = currentConnection.SendMessageAsync(
-                    new ChatMessage(MessageType.Message, _userName, $"***** Сервер получил {counter} сообщений."));
-            }
-        }
+       
 
-        private void ErrorOccurredHandler(Exception ex)
-        {
-            AddChatMessage(new ChatMessage($"Ошибка: {ex.Message}"));
-        }
+
+        
 
     }
 }
