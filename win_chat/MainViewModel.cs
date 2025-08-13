@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using Chat_Core;
 
@@ -12,6 +15,18 @@ namespace win_chat
 {
     internal class MainViewModel : INotifyPropertyChanged
     {
+        public MainViewModel()
+        {
+            ConnectCommand = new RelayCommand(ConnectOrDisconnect, CanConnectOrDisconnect);
+            SendMessageCommand = new RelayCommand(SendMessage, CanSendMessage);
+
+            protocol = new JsonMessageSerializer();
+
+            Update_ConnectionStatus();
+            Update_ConnectionButton_Text();
+        }
+
+
         private string _serverIp = "127.0.0.1";
         private bool _isServerMode = false;
         private string _userName = "";
@@ -20,7 +35,7 @@ namespace win_chat
         private string _connectButtonText = "Подключиться";
         private string _chatLog = "";
         private string _outgoingMessage = "";
-        private string _connectionStatus = "Остановлен";
+        private string _connectionStatus = "Клиент: Остановлен";
 
         private int _port = 5000;
         int counter = 0;
@@ -29,12 +44,6 @@ namespace win_chat
         IMessageProtocol protocol;
 
         public event PropertyChangedEventHandler PropertyChanged;
-
-        public MainViewModel()
-        {
-            ConnectCommand = new RelayCommand(ConnectOrDisconnect, CanConnectOrDisconnect);
-            SendMessageCommand = new RelayCommand(SendMessage, CanSendMessage);
-        }
 
         public string ServerIp
         {
@@ -59,11 +68,19 @@ namespace win_chat
                     _isServerMode = value;
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(IsIpEnabled));
+
+                    Update_ConnectionStatus();
+                    Update_ConnectionButton_Text();
+
                 }
             }
         }
 
         public bool IsIpEnabled => !IsServerMode;
+
+
+        public bool Is_IsServer_CheckBox_Enabled => !IsRunning;
+
 
         public string UserName
         {
@@ -95,11 +112,20 @@ namespace win_chat
                     }
                     else
                     {
-                        if (_isConnected) AddChatMessage(new ChatMessage("Подключение к серверу установлено"));
-                        else AddChatMessage(new ChatMessage("Подключение к серверу закрыто"));
+                        if (_isConnected)
+                        {
+                            AddChatMessage(new ChatMessage("Подключение к серверу установлено"));
+                            IsRunning = true;
+                        }
+                        else
+                        {
+                            AddChatMessage(new ChatMessage("Подключение к серверу закрыто"));
+                            IsRunning = false;
+                        }
+
                     }
 
-
+                    Update_ConnectionButton_Text();
                 }
             }
         }
@@ -109,23 +135,45 @@ namespace win_chat
             get => _isRunning;
             private set
             {
-                if (_isRunning != value )
+                if (_isRunning != value)
                 {
                     _isRunning = value;
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(ConnectionStatus));
+                    OnPropertyChanged(nameof(Is_IsServer_CheckBox_Enabled));
 
-                    if (IsServerMode)
-                    {
-                        ConnectButtonText = _isRunning ? "Отключиться" : "Подключиться";
-                        ConnectionStatus = _isRunning ? "Сервер: Запущен" : "Сервер: Остановлен";
-                    }
-                    else 
-                    {
-                        ConnectButtonText = _isRunning ? "Отключиться" : "Подключиться";
-                        ConnectionStatus = _isRunning ? "Клиент: Запущен" : "Клиент: Остановлен";
-                    }
+                    Update_ConnectionStatus();
+                    Update_ConnectionButton_Text();
+
+                    var conn = _isServerMode ? "Сервер" : "Клиент";
+                    var status = _isRunning ? " запущен." : " остановлен.";
+                    AddChatMessage(new ChatMessage(conn + status));
                 }
+            }
+        }
+
+        private void Update_ConnectionButton_Text()
+        {
+
+            if (IsServerMode)
+            {
+                ConnectButtonText = _isRunning ? "Отключить" : "Включить";
+            }
+            else
+            {
+                ConnectButtonText = _isConnected ? "Отключиться" : "Подключиться";
+            }
+        }
+
+        private void Update_ConnectionStatus()
+        {
+            if (IsServerMode)
+            {
+                ConnectionStatus = _isRunning ? "Сервер: Запущен" : "Сервер: Остановлен";
+            }
+            else
+            {
+                ConnectionStatus = _isRunning ? "Клиент: Запущен" : "Клиент: Остановлен";
             }
         }
 
@@ -145,7 +193,7 @@ namespace win_chat
         public string ChatLog
         {
             get => _chatLog;
-            private set
+            set
             {
                 if (_chatLog != value)
                 {
@@ -154,6 +202,8 @@ namespace win_chat
                 }
             }
         }
+
+
 
         public string OutgoingMessage
         {
@@ -190,81 +240,37 @@ namespace win_chat
         {
             if (!IsRunning)
             {
-                // создаем протокол (JSON)
-                protocol = new JsonMessageSerializer();
-
+                
                 // создаем подключение
                 if (_isServerMode)
                 {
-                    currentConnection = new ConnectionManager(_port, _userName, _isServerMode, protocol);
-
-                    // подписываемся на события
-                    currentConnection.Running += RunningHandler;
-                    currentConnection.Stopped += StoppedHandler;
-                    currentConnection.Connected += ConnectedHandler;
-                    currentConnection.Disconnected += DisconnectedHandler;
-                    currentConnection.MessageReceived += MessageReceivedHandler;
-                    currentConnection.ErrorOccurred += ErrorOccurredHandler;
-
-                    // запускаем сервер
-                    await currentConnection.ConnectAsync();
-                    AddChatMessage(new ChatMessage(_userName, "Сервер запущен."));
+                    currentConnection = new ConnectionManager(_port, _userName, _isServerMode, protocol);                    
                 }
                 else
                 {
-                    currentConnection = new ConnectionManager(_serverIp, _port, _userName, _isServerMode, protocol);
-
-                    currentConnection.Running += RunningHandler;
-                    currentConnection.Stopped += StoppedHandler;
-                    currentConnection.Connected += ConnectedHandler;
-                    currentConnection.Disconnected += DisconnectedHandler;
-                    currentConnection.MessageReceived += MessageReceivedHandler;
-                    currentConnection.ErrorOccurred += ErrorOccurredHandler;
-
-                    /*
-                    // подписываемся на события
-                    currentConnection.Running += () => IsRunning = true;
-                    currentConnection.Stopped += () => IsRunning = false;
-                    currentConnection.Connected += () =>
-                    {
-                        IsConnected = true;
-                        //AddChatMessage(new ChatMessage("Подключение к серверу установлено"));
-                    };
-                    currentConnection.Disconnected += () =>
-                    {
-                        IsConnected = false;
-                        //AddChatMessage(new ChatMessage("Подключение к серверу закрыто"));
-                    };
-                  
-                    currentConnection.MessageReceived += (msg) => AddChatMessage(msg);
-             
-                    currentConnection.ErrorOccurred += (ex) => AddChatMessage(new ChatMessage($"Ошибка: {ex.Message}"));
-                    */
-
-                    // запускаем клиент
-                    await currentConnection.ConnectAsync();
-                    AddChatMessage(new ChatMessage("Клиент запущен."));
+                    currentConnection = new ConnectionManager(_serverIp, _port, _userName, _isServerMode, protocol);                   
                 }
 
+                // подписываемся на события
+                currentConnection.Running += RunningHandler;
+                currentConnection.Stopped += StoppedHandler;
+                currentConnection.Connected += ConnectedHandler;
+                currentConnection.Disconnected += DisconnectedHandler;
+                currentConnection.MessageReceived += MessageReceivedHandler;
+                currentConnection.ErrorOccurred += ErrorOccurredHandler;
 
-                // IsConnected = true;
-                // AddChatMessage("Система: Подключено.");
+                // запускаем соединение
+                await currentConnection.ConnectAsync();
+
             }
             else
             {
+
                 try
                 {
                     IsConnected = false;
                     IsRunning = false;
 
-                    /*
-                    currentConnection.Running -= ()=> { };
-                    currentConnection.Stopped -= () => { };
-                    currentConnection.Connected -= () => { };
-                    currentConnection.Disconnected -= () => { };
-                    currentConnection.MessageReceived -= (msg) => { };
-                    currentConnection.ErrorOccurred -= (ex) => { };
-                    */
                     // Отписка от событий
                     currentConnection.Running -= RunningHandler;
                     currentConnection.Stopped -= StoppedHandler;
@@ -276,8 +282,7 @@ namespace win_chat
 
                     await currentConnection.DisconnectAsync();
 
-                    var tempstr = _isServerMode ? "Сервер" : "Клиент";
-                    AddChatMessage(new ChatMessage(tempstr + " остановлен."));
+
                 }
                 catch (Exception ex)
                 {
@@ -295,8 +300,19 @@ namespace win_chat
                 return true;
 
             bool validUserName = !string.IsNullOrWhiteSpace(UserName);
-            bool validIp = IsServerMode || (!string.IsNullOrWhiteSpace(ServerIp));
-            return validUserName && validIp;
+            bool validIp = IsValidIpAddress(ServerIp);
+
+
+            if (IsServerMode)
+            {
+                return validUserName;
+            }
+            else
+            {
+                return validUserName && validIp;
+            }
+
+
         }
 
         private async void SendMessage(object parameter)
@@ -329,8 +345,8 @@ namespace win_chat
                     ChatLog += message + Environment.NewLine;
                 }
                 else
-                { 
-                //игнор
+                {
+                    //игнор
                 }
             }
             else
@@ -338,6 +354,26 @@ namespace win_chat
                 ChatLog += message + Environment.NewLine;
             }
 
+        }
+
+        private bool IsValidIpAddress(string input)
+        {
+            bool parseResult = IPAddress.TryParse(input, out IPAddress? address);
+
+            if (string.IsNullOrWhiteSpace(ServerIp))
+            {
+                return false;
+            }
+
+            if (!parseResult)
+            {
+                return false;
+            }
+
+            // Проверяем, что адрес IPv4
+            bool isIPv4 = address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork;
+
+            return isIPv4;
         }
 
         // Объявление обработчиков
@@ -359,6 +395,7 @@ namespace win_chat
         private void DisconnectedHandler()
         {
             IsConnected = false;
+
         }
 
         private void MessageReceivedHandler(ChatMessage msg)

@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Chat_Core
 {
-    internal class TcpServerConnection : IChatConnection
+    public class TcpServerConnection : IChatConnection
     {
         private bool _IsRunning = false;
         public bool IsConnected=>_client?.Connected ?? false;

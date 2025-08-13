@@ -5,36 +5,80 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:win_chat"
         mc:Ignorable="d"
-        Title="WpfChat" Height="450" Width="850">
-    <Grid Margin="10">
+        Title="WpfChat"
+        Height="600" Width="800"
+        MinHeight="300" MinWidth="600">
+    <Grid Margin="0">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <!-- Раздел подключения -->
-        <Border BorderBrush="Gray" BorderThickness="1" Padding="10" Margin="0 0 0 5">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <Border BorderBrush="Gray" BorderThickness="1" Padding="10" Margin="0 0 0 5" Background="AliceBlue" >
+            <Grid Margin="5"  >
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- CheckBox -->
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- "IP-адрес:" -->
+                    <ColumnDefinition Width="*"/>
+                    <!-- TextBox для IP -->
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- "Имя пользователя:" -->
+                    <ColumnDefinition Width="*"/>
+                    <!-- TextBox для имени -->
+                    <ColumnDefinition Width="*"/>
+                    <!-- Button -->
+                </Grid.ColumnDefinitions>
 
-                <CheckBox Content="Запустить как сервер"
-                      IsChecked="{Binding IsServerMode}"
-                      Margin="0,0,10,0"/>
+                <StackPanel Orientation="Horizontal" Grid.Column="0" Grid.ColumnSpan="1">
+                    <CheckBox 
+                    
+                    Content="Cервер"
+                    VerticalAlignment="Center"
+                    IsChecked="{Binding IsServerMode}"
+                    IsEnabled="{Binding Is_IsServer_CheckBox_Enabled}"
+                    Margin="0,0,10,0"/>
+                </StackPanel>
 
-                <TextBlock Text="IP-адрес:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                <TextBox Width="150"
-                     Text="{Binding ServerIp, UpdateSourceTrigger=PropertyChanged}"
-                     IsEnabled="{Binding IsIpEnabled}"
-                     Margin="0,0,10,0"/>
+                <StackPanel Orientation="Horizontal" Grid.Column="1" Grid.ColumnSpan="2">
+               
+                <TextBlock
+                    
+                    Text="IP:"
+                    VerticalAlignment="Center"
+                    Margin="0,0,5,0"/>
 
-                <TextBlock Text="Имя пользователя:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                <TextBox Width="150"
-                     Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"
-                     Margin="0,0,10,0"/>
+                <TextBox
+                   
+                    Text="{Binding ServerIp, UpdateSourceTrigger=PropertyChanged}"
+                    IsEnabled="{Binding IsIpEnabled}"
+                    Margin="0,0,10,0"
+                    MinWidth="120" MaxWidth="120"
+                    />
+                </StackPanel>
 
-                <Button Content="{Binding ConnectButtonText}"
-                    Command="{Binding ConnectCommand}"
-                    Width="120"/>
-            </StackPanel>
+                <StackPanel Orientation="Horizontal" Grid.Column="3" Grid.ColumnSpan="1">
+                
+                <TextBlock
+                   
+                    Text="Имя:"
+                    VerticalAlignment="Center"
+                    Margin="0,0,5,0"/>
+
+                <TextBox
+                    
+                    Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"
+                    Margin="0,0,10,0"
+                    MinWidth="120" MaxWidth="120"/>
+                </StackPanel>
+
+                <Button
+                    Grid.Column="4"
+                    Content="{Binding ConnectButtonText}"                   
+                    Command="{Binding ConnectCommand}" Width="100"/>
+            </Grid>
         </Border>
 
         <!-- Раздел чата -->
@@ -50,22 +94,42 @@
             </ScrollViewer>
 
             <!-- Поле ввода, кнопка отправки и статус -->
-            <StackPanel Orientation="Horizontal" Grid.Row="1" VerticalAlignment="Center">
 
-                <TextBox Text="{Binding OutgoingMessage, UpdateSourceTrigger=PropertyChanged}"
-                     Width="450" Margin="0,0,5,0"/>
+            <Grid Grid.Row="1" Margin="5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <!-- TextBox -->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Button-->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- TextBlock -->
+                    </Grid.ColumnDefinitions>
 
-                <Button Content="Отправить"
+                    <TextBox
+                    Grid.Column="0"
+                    Text="{Binding OutgoingMessage, UpdateSourceTrigger=PropertyChanged}"
+                    Margin="0,0,5,0">
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="Enter" Command="{Binding SendMessageCommand}" />
+                     </TextBox.InputBindings>
+                    </TextBox>
+
+                    <Button 
+                    Grid.Column="1"
+                    Content="Отправить"
                     Command="{Binding SendMessageCommand}"
                     IsEnabled="{Binding IsConnected}"
-                    Width="100"
+                    Width="80"
                     Margin="0,0,10,0"/>
 
-                <TextBlock Text="{Binding ConnectionStatus}"
-                       VerticalAlignment="Center"
-                       FontWeight="Bold"
-                       Foreground="DarkGreen"/>
-            </StackPanel>
+                    <TextBlock
+                    Grid.Column="2"
+                    Text="{Binding ConnectionStatus}"
+                    VerticalAlignment="Center"
+                    FontWeight="Bold"
+                    Foreground="DarkGreen"/>
+                </Grid>
+           
         </Grid>
 
 

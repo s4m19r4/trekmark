@@ -95,6 +95,7 @@ namespace Chat_Core
                 CloseClient();
                 IsRunning = false;
                 Disconnected?.Invoke();
+               
             }
             catch (Exception ex)
             {
