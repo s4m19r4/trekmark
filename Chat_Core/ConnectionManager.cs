@@ -73,7 +73,7 @@ namespace Chat_Core
             });
         }
 
-        public async Task SendMessageAsync(ChatMessage msg) // создать Message и отправить его через текущее соединение
+        public async Task SendMessageAsync(ChatMessage msg) 
         {
             if (IsConnected)
             {
@@ -83,12 +83,7 @@ namespace Chat_Core
 
         public async Task DisconnectAsync()
         {
-            
-           // if (IsConnected)
-           // {
-                await CurrentConnection.DisconnectAsync();
-           // }
-            
+                await CurrentConnection.DisconnectAsync();        
         }
 
         private void SubscribeEvents() // подписка+проброс

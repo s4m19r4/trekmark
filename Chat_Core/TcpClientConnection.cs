@@ -33,7 +33,7 @@ namespace Chat_Core
         private StreamReader _reader;
         private StreamWriter _writer;
 
-        public bool IsConnected => _client?.Connected??false;
+        public bool IsConnected => _client?.Connected ?? false;
 
         public TcpClientConnection(string ip, int port, IMessageProtocol protocol)
         {
@@ -62,19 +62,18 @@ namespace Chat_Core
             try
             {
                 _client = new TcpClient();
-               
+
                 await _client.ConnectAsync(Ip, Port);
                 IsRunning = true;
-                //StartPingLoop(2500);
 
                 _stream = _client.GetStream();
                 _reader = new StreamReader(_stream, Encoding.UTF8);
                 _writer = new StreamWriter(_stream, Encoding.UTF8) { AutoFlush = true };
 
                 if (IsConnected)
-                {                    
+                {
                     Connected?.Invoke();
-                } 
+                }
 
                 _ = Task.Run(ListenForMessagesAsync);
             }
@@ -82,9 +81,9 @@ namespace Chat_Core
             {
                 ErrorOccurred?.Invoke(ex);
             }
-            finally 
+            finally
             {
-               
+
             }
         }
 
@@ -95,7 +94,7 @@ namespace Chat_Core
                 CloseClient();
                 IsRunning = false;
                 Disconnected?.Invoke();
-               
+
             }
             catch (Exception ex)
             {
@@ -107,7 +106,6 @@ namespace Chat_Core
         {
             try
             {
-                StopPingLoop();
 
                 _reader?.Dispose();
                 _reader = null;
@@ -135,8 +133,8 @@ namespace Chat_Core
             if (IsConnected && message != null)
             {
                 try
-                {                   
-                        string json = Protocol.Serialize(message);
+                {
+                    string json = Protocol.Serialize(message);
                     await _writer.WriteLineAsync(json);
                 }
                 catch (Exception ex)
@@ -165,7 +163,7 @@ namespace Chat_Core
                         if (message.Text.ToLower().Contains("ping"))
                         {
                             Console.WriteLine("ping получен");
-                            await SendMessageAsync(new ChatMessage ( MessageType.Ping, "pong" ));
+                            await SendMessageAsync(new ChatMessage(MessageType.Ping, "pong"));
                             Console.WriteLine("pong отправлен");
                         }
                         else if (message.Text.ToLower().Contains("pong"))
@@ -175,7 +173,7 @@ namespace Chat_Core
                         }
                         else
                         {
-                            
+
                             MessageReceived?.Invoke(message);
                         }
                     }
@@ -183,7 +181,7 @@ namespace Chat_Core
                 if (IsConnected == false)
                 {
                     Console.WriteLine("Соединение с сервером разорвано");
-                    IsRunning = false;  
+                    IsRunning = false;
                     Disconnected?.Invoke();
                 }
             }
@@ -191,7 +189,7 @@ namespace Chat_Core
             {
                 if (ex is IOException)
                 {
-                    // Игнорируем ошибку разрыва соединения — нормальное событие
+                    // Игнор
                 }
                 else
                 {
@@ -204,51 +202,6 @@ namespace Chat_Core
             }
         }
 
-        // Запуск пинга после подключения
-        private void StartPingLoop(int delayVal)
-        {
 
-            _pingCts = new CancellationTokenSource();
-
-            _ = Task.Run(async () =>
-            {
-                while (!_pingCts.IsCancellationRequested)
-                {
-
-                    _lastPongReceived = false;
-
-
-                    try
-                    {
-                        await SendMessageAsync(new ChatMessage { Type = MessageType.Ping, Text = "ping" });
-                        Console.WriteLine("ping отправлен");
-                    }
-                    catch
-                    {
-                        // ошибка при отправке — разрыв
-                        DisconnectAsync();
-
-                        break;
-                    }
-
-                    await Task.Delay(delayVal); // ждём 5 секунд
-
-                    if (_lastPongReceived == false) // Проверяем результат прошлого пинга
-                    {
-                        Console.WriteLine("Сервер не отвечает на пинг — отключаем.");
-                        DisconnectAsync();
-                        break;
-                    }
-
-
-                }
-            }, _pingCts.Token);
-        }
-
-        private void StopPingLoop()
-        {
-            _pingCts?.Cancel();
-            _pingCts = null;
-        }
     }
 }
