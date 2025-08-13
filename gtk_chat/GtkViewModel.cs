@@ -318,6 +318,7 @@ namespace gtk_chat
         {
             AddChatMessage(msg);
 
+            /*
             if (_isServerMode)
             {
                 // Эхо-ответ
@@ -325,6 +326,7 @@ namespace gtk_chat
                 _ = currentConnection.SendMessageAsync(
                     new ChatMessage(MessageType.Message, _userName, $"***** Сервер получил {counter} сообщений."));
             }
+            */
         }
 
         private void ErrorOccurredHandler(Exception ex)

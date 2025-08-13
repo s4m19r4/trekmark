@@ -15,7 +15,7 @@ namespace Chat_Core
         private bool _IsRunning = false;
         public bool IsConnected=>_client?.Connected ?? false;
 
-        private bool _lastPongReceived = true; // флаг, что мы получили последний PONG
+        private bool _lastPongReceived = true; 
         private CancellationTokenSource _pingCts;
 
         public event Action Running;
@@ -140,11 +140,8 @@ namespace Chat_Core
 
                 _stream?.Dispose();
                 _stream = null;
-
-                //_client.Client.LingerState = new LingerOption(true, 0);
-                //_client?.Client.Shutdown(SocketShutdown.Both);
-                _client?.Close();
-                //_client?.Dispose();
+                                
+                _client?.Close();               
                 _client = null;
 
             }
